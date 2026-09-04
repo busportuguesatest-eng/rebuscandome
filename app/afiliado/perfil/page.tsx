@@ -1,0 +1,21 @@
+import { redirect } from 'next/navigation';
+import { ArrowRight, Bell, CheckCircle2, ChevronRight, CircleDollarSign, Mail, MapPin, ShieldCheck, UserRound, Volume2 } from 'lucide-react';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
+import { PlatformShell, PageHeader } from '@/components/platform-shell';
+import AffiliateAvatarEditor from '@/components/affiliate-avatar-editor';
+export const dynamic='force-dynamic';
+export default async function Profile(){
+ const s=await createClient(); const {data:{user}}=await s.auth.getUser(); if(!user)redirect('/');
+ const {data:p}=await s.from('profiles').select('full_name,role,status,phone,country,onboarding_completed,avatar_url').eq('id',user.id).single(); if(!p||p.role!=='affiliate'||p.status!=='active')redirect('/');
+ const name=p.full_name||'Afiliado';
+ const avatarUrl = p.avatar_url?.startsWith('http') ? p.avatar_url : (p.avatar_url ? ((await s.storage.from('avatars').createSignedUrl(p.avatar_url, 3600)).data?.signedUrl || null) : null); const initials=name.split(/\s+/).map((x:string)=>x[0]).join('').slice(0,2).toUpperCase();
+ return <PlatformShell role="affiliate" name={name}><PageHeader eyebrow="CUENTA" title="Mi perfil" description="Tu información, preferencias y estado de cuenta en un solo lugar."/>
+  <section className="profile-hero-card visual-profile-hero"><div className="profile-avatar-hero-wrap">{avatarUrl ? <img className="profile-avatar-large profile-avatar-image" src={avatarUrl} alt={`Foto de ${name}`} /> : <div className="profile-avatar-large">{initials||'AF'}</div>} </div><div className="profile-hero-copy"><span className="section-kicker light">AFILIADO ACTIVO</span><h2>{name}</h2><p>{user.email||'Sin correo'}</p><div className="profile-hero-tags"><span><CheckCircle2 size={13}/> Cuenta activa</span><span><ShieldCheck size={13}/> Acceso protegido</span></div></div><Link className="profile-hero-action" href="/afiliado/productos">Ir a productos <ArrowRight size={15}/></Link></section>
+  <section className="panel-card profile-photo-card"><AffiliateAvatarEditor initialUrl={avatarUrl} name={name}/></section>
+  <div className="profile-layout"><section className="panel-card"><div className="panel-heading"><div><span className="section-kicker">INFORMACIÓN</span><h2>Datos personales</h2></div><UserRound size={18}/></div><div className="profile-data-grid"><div><Mail size={15}/><div><span>Correo electrónico</span><strong>{user.email||'—'}</strong></div></div><div><UserRound size={15}/><div><span>Nombre</span><strong>{name}</strong></div></div><div><CircleDollarSign size={15}/><div><span>Rol</span><strong>Afiliado</strong></div></div><div><MapPin size={15}/><div><span>País</span><strong>{p.country||'VE'}</strong></div></div><div><Volume2 size={15}/><div><span>WhatsApp</span><strong>{p.phone||'No registrado'}</strong></div></div><div><CheckCircle2 size={15}/><div><span>Perfil</span><strong>{p.onboarding_completed?'Completo':'Activo'}</strong></div></div></div></section>
+   <section className="panel-card"><div className="panel-heading"><div><span className="section-kicker">PREFERENCIAS</span><h2>Tu experiencia</h2></div><Bell size={18}/></div><div className="profile-preference-list"><div><div><strong>Alertas de ventas</strong><span>Recibe avisos sobre ventas y comisiones.</span></div><b>Activas</b></div><div><div><strong>Recordatorios de formación</strong><span>Mantén el ritmo en la Academia.</span></div><b>Activos</b></div><div><div><strong>Sonidos de interfaz</strong><span>Feedback sutil para acciones importantes.</span></div><b>Activo</b></div></div><Link href="/afiliado/preferencias" className="profile-settings-link">Ver preferencias <ChevronRight size={15}/></Link></section>
+  </div>
+  <section className="panel-card profile-security-card"><div className="profile-security-icon"><ShieldCheck size={20}/></div><div><span className="section-kicker">SEGURIDAD</span><h2>Tu cuenta está protegida</h2><p>La autenticación se gestiona con Supabase. No compartas tu contraseña y utiliza recuperación de acceso cuando sea necesario.</p></div><Link href="/recuperar" className="native-secondary">Recuperar acceso <ArrowRight size={14}/></Link></section>
+ </PlatformShell>
+}

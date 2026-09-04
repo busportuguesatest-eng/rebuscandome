@@ -1,0 +1,17 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { Building2, Save, Smartphone } from 'lucide-react';
+
+type Method = { method:'pago_movil'|'transferencia'; enabled:boolean; bank_name:string; account:string; account_type:string; holder:string; identifier:string; phone:string };
+const empty=(method:'pago_movil'|'transferencia'):Method=>({method,enabled:true,bank_name:'',account:'',account_type:'',holder:'',identifier:'',phone:''});
+
+export function PaymentMethodSettings(){
+ const [methods,setMethods]=useState<Method[]>([empty('pago_movil'),empty('transferencia')]);
+ const [saving,setSaving]=useState<string>(''); const [message,setMessage]=useState('');
+ useEffect(()=>{fetch('/api/admin/payment-methods').then(r=>r.json()).then(b=>{if(b.ok)setMethods(b.methods as Method[]);}).catch(()=>setMessage('No pudimos cargar la configuración.'))},[]);
+ const update=(method:string,key:keyof Method,value:unknown)=>setMethods(v=>v.map(x=>x.method===method?{...x,[key]:value}:x));
+ async function save(method:Method){setSaving(method.method);setMessage('');try{const r=await fetch('/api/admin/payment-methods',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(method)});const b=await r.json().catch(()=>({}));if(!r.ok||!b.ok)throw new Error(b.message||'No se pudo guardar.');setMethods(v=>v.map(x=>x.method===method.method?b.method:x));setMessage('Configuración guardada.')}catch(e){setMessage(e instanceof Error?e.message:'No se pudo guardar.')}finally{setSaving('')}}
+ return <div className="payment-settings-grid">{methods.map(m=><section className="panel-card payment-settings-card" key={m.method}><div className="payment-settings-head"><div className={`payment-settings-icon ${m.method==='pago_movil'?'green':'blue'}`}>{m.method==='pago_movil'?<Smartphone size={18}/>:<Building2 size={18}/>}</div><div><span className="section-kicker">{m.method==='pago_movil'?'PAGO MÓVIL':'TRANSFERENCIA'}</span><h3>{m.method==='pago_movil'?'Datos para Pago Móvil':'Datos para Transferencia'}</h3></div><label className="payment-toggle"><input type="checkbox" checked={m.enabled} onChange={e=>update(m.method,'enabled',e.target.checked)}/><span>Activo</span></label></div>
+ <div className="payment-settings-fields"><label>Banco<input value={m.bank_name} onChange={e=>update(m.method,'bank_name',e.target.value)} /></label><label>{m.method==='pago_movil'?'Titular (opcional)':'Titular'}<input value={m.holder} onChange={e=>update(m.method,'holder',e.target.value)} /></label><label>{m.method==='transferencia'?'Cédula / RIF (opcional)':'Cédula / RIF'}<input value={m.identifier} onChange={e=>update(m.method,'identifier',e.target.value)} /></label>{m.method==='pago_movil'?<label>Teléfono<input value={m.phone} onChange={e=>update(m.method,'phone',e.target.value)} /></label>:<><label>Número de cuenta<input value={m.account} onChange={e=>update(m.method,'account',e.target.value)} /></label><label>Tipo de cuenta<input value={m.account_type} onChange={e=>update(m.method,'account_type',e.target.value)} placeholder="Cuenta corriente / ahorro" /></label></>}</div>
+ <div className="payment-settings-footer"><small>Estos datos se mostrarán al cliente en el checkout cuando seleccione este método.</small><button className="native-primary" disabled={saving===m.method} onClick={()=>void save(m)}><Save size={14}/>{saving===m.method?'Guardando…':'Guardar método'}</button></div>{message&&<div className="settings-save-message">{message}</div>}</section>)}</div>
+}
