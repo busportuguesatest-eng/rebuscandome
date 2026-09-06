@@ -1,0 +1,2 @@
+-- Replaces the academy progression validator with production-safe JSON comparisons.
+-- See applied migration 046 for the full schema/trigger setup.
